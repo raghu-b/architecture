@@ -1,0 +1,94 @@
+|                                                                                Your Data Ecosystem                                                                   |
+|                                                                                                                                                                  |
+|   +-------------------+       +-------------------+       +-------------------+       +-------------------+       +-------------------+       +-------------------+  |
+|   |   Data Warehouse  |       |   Relational DB   |       |   NoSQL DB        |       |   Data Lake       |       |   BI Tool         |       |   ETL Tool        |  |
+|   |   (e.g., Snowflake)|       |   (e.g., PostgreSQL)|       |   (e.g., MongoDB) |       |   (e.g., S3/ADLS) |       |   (e.g., Power BI)|       |   (e.g., dbt)     |  |
+|   |-------------------|       |-------------------|       |-------------------|       |-------------------|       |-------------------|       |-------------------|  |
+|   | Tables, Schemas,  |       | Tables, Schemas,  |       | Collections, Docs |       | Files, Folders,   |       | Dashboards,       |       | Models, Tests,    |  |
+|   | Columns, Usage    |       | Columns, Usage    |       |                   |       | Partitions        |       | Reports           |       | Lineage           |  |
+|   +-------------------+       +-------------------+       +-------------------+       +-------------------+       +-------------------+       +-------------------+  |
+|             ^                         ^                         ^                         ^                         ^                         ^                      |
+|             | Metadata Extraction     | Metadata Extraction     | Metadata Extraction     | Metadata Extraction     | Metadata Extraction     | Metadata Extraction  |
+|             | (via Ingestion Framework)| (via Ingestion Framework)| (via Ingestion Framework)| (via Ingestion Framework)| (via Ingestion Framework)| (via Ingestion Framework)|
++------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+                                  |
+                                  |
+                                  V
++------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                                                                                Apache Airflow Environment                                                        |
+|                                                                                                                                                                  |
+|   +------------------------------------------------------------------------------------------------------------------------------------------------------------+  |
+|   |                                                                  Airflow Webserver (UI & API)                                                              |  |
+|   |   - Manages DAGs                                                                                                                                         |  |
+|   |   - Provides UI for monitoring/triggering                                                                                                                  |  |
+|   |   - Interacts with OpenMetadata-managed Airflow APIs                                                                                                       |  |
+|   +------------------------------------------------------------------------------------------------------------------------------------------------------------+  |
+|         ^                                                                      ^                                                                                 |
+|         | REST API / UI Access                                                 | DAG Deployment                                                                    |
+|         |                                                                      |                                                                                 |
+|   +-------------------+                                                        |                                                                                 |
+|   |  Airflow Scheduler|--------------------------------------------------------|----------------------------------------------------------------------------------+
+|   |   - Schedules DAG runs                                                   |                                                                                 |
+|   |   - Monitors DAGs folder                                                 |                                                                                 |
+|   +-------------------+                                                        |                                                                                 |
+|         |                                                                      |                                                                                 |
+|         | Triggers Tasks                                                       |                                                                                 |
+|         V                                                                      |                                                                                 |
+|   +-------------------+                                                        |                                                                                 |
+|   |  Airflow Workers  |                                                        |                                                                                 |
+|   |   - Executes DAG tasks                                                   |                                                                                 |
+|   |   - Runs Python Operators (OpenMetadata Ingestion)                       |                                                                                 |
+|   +-------------------+                                                        |                                                                                 |
+|         |                                                                      |                                                                                 |
+|         V                                                                      |                                                                                 |
+|   +--------------------------------------------------------------------------+ |
+|   |                                                                          | |
+|   |              OpenMetadata Ingestion Framework (Installed in Airflow)   | |
+|   |   - Python Library with various connectors                             | |
+|   |   - Connects to data sources, extracts metadata                        | |
+|   |   - Transforms metadata into OpenMetadata's format                     | |
+|   |   - Pushes metadata to OpenMetadata Server via APIs                    | |
+|   +--------------------------------------------------------------------------+ |
+|                                                                                                                                                                  |
++------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+                                  | Metadata Push (HTTP/S API Calls)
+                                  |
+                                  V
++------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                                                                               OpenMetadata Server                                                                  |
+|                                                                                                                                                                  |
+|   +------------------------------------------------------------------------------------------------------------------------------------------------------------+  |
+|   |                                                                OpenMetadata UI / API                                                                       |  |
+|   |   - User Interface for configuration, exploration, governance                                                                                              |  |
+|   |   - REST API for programmatic access                                                                                                                       |  |
+|   +------------------------------------------------------------------------------------------------------------------------------------------------------------+  |
+|         ^                                                                      ^                                                                                 |
+|         | (1. User Configures Service/Pipeline)                                | (4. Manages/Monitors Ingestion)                                                   |
+|         |                                                                      |                                                                                 |
+|   +-------------------+                                                        |                                                                                 |
+|   | OpenMetadata Server |<-----------------------------------------------------|----------------------------------------------------------------------------------+
+|   | (Backend Logic)   |                                                        |                                                                                 |
+|   |   - Processes ingestion configurations                                     |                                                                                 |
+|   |   - Generates ingestion workflow definitions (JSON/YAML)                   |                                                                                 |
+|   |   - Interacts with OpenMetadata-managed Airflow APIs                       |                                                                                 |
+|   +-------------------+                                                        |                                                                                 |
+|         |                                                                      |                                                                                 |
+|         | (2. Triggers DAG Generation)                                         |                                                                                 |
+|         |                                                                      |                                                                                 |
+|   +--------------------------------------------------------------------------+ |
+|   |                                                                          | |
+|   |          OpenMetadata-managed Airflow APIs (Running in Airflow)        | |
+|   |   - Custom APIs exposed by OpenMetadata within Airflow                   | |
+|   |   - Receives ingestion configurations from OpenMetadata Server           | |
+|   |   - Dynamically generates Airflow DAGs (.py files)                       | |
+|   |   - Deploys DAGs to Airflow's DAGs folder                                | |
+|   |   - Allows OpenMetadata to trigger/monitor DAGs                          | |
+|   +--------------------------------------------------------------------------+ |
+|         |                                                                      |
+|         V                                                                      |
+|   +-------------------+       +-------------------+       +-------------------+  |
+|   |  Metadata Store   |       |   Search Index    |       |   Usage/Lineage   |  |
+|   |   (e.g., MySQL/PG)|       |   (e.g., Elastic) |       |   Store           |  |
+|   |   - Stores raw     |       |   - Powers fast    |       |   - Stores data    |  |
+|   |     metadata       |       |     search       |       |     lineage, usage |  |
+|   +-------------------+       +-------------------+       +-------------------+  |
