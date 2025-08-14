@@ -1,0 +1,71 @@
+Each job runs 2× per day
+	•	Each run takes 10–30 minutes
+	•	You’re using Databricks SQL (Classic Compute)
+
+Below is a pricing‑agnostic calculator + an illustrative example so you can swap in your own $/DBU and $/VM‑hour.
+
+⸻
+
+1) Convert schedule → runtime hours
+
+Per job per month (≈30 days, 2 runs/day):
+	•	10 min/run → 2 \times 30 \times \frac{10}{60} = 10 hours/month
+	•	30 min/run → 2 \times 30 \times \frac{30}{60} = 30 hours/month
+
+
+⸻
+
+In Databricks pricing formulas, especially when calculating costs for SQL, Jobs, or All-Purpose Compute,
+	•	RDBU = Rate per Databricks Unit (DBU) — This is the price of one DBU per hour for the chosen workload type (e.g., SQL Classic Compute, Jobs Compute, or All-Purpose Compute) and cloud provider (AWS).
+	•	Example: On AWS, SQL Classic Compute might be $0.55 per DBU-hour.
+	•	PDBU = Price per DBU-hour — Sometimes used interchangeably with RDBU, but in Databricks documentation, it’s often the actual applied rate after discounts or contract terms.
+
+
+	Assumptions (illustrative, not quotes):
+	•	Warehouse: SQL Classic – Small with Photon
+	•	R_{DBU} = 2 DBU/h, P_{DBU} = $0.22/DBU
+	•	V = 2 EC2 nodes (driver + 1 worker), P_{VM} = $0.12/h
+	•	500 jobs, each runs 10–30 hours/month (per schedule above)
+	•	S3: 10 TB stored; request cost ≈ $12/month
+	•	NAT: $0 (using S3 VPC endpoint), EBS: $10–$20 total (short‑lived)
+	•	Airflow: $100/month (MWAA small)
+
+
+
+A) Per‑job monthly Databricks + EC2 (Classic)
+	•	10‑min case (H=10 h):
+	•	DBUs: 10 × 2 × 0.22 = \$4.40
+	•	EC2: 10 × 2 × 0.12 = \$2.40
+	•	$6.80 / job / month
+	•	30‑min case (H=30 h):
+	•	DBUs: 30 × 2 × 0.22 = \$13.20
+	•	EC2: 30 × 2 × 0.12 = \$7.20
+	•	$20.40 / job / month
+
+B) For 500 jobs
+	•	10‑min: $3,400/month (Databricks DBUs + EC2)
+	•	30‑min: $10,200/month (Databricks DBUs + EC2)
+
+⸻
+
+4) Practical tuning for 10–30 min jobs
+	•	Enable Photon on the SQL warehouse (big win for complex SQL).
+	•	Short auto‑stop (e.g., 5–10 min) to avoid paying between the two daily runs.
+	•	Batch/consolidate multiple queries per spin‑up to amortize start time.
+	•	Partition + Z‑ORDER (Delta) on selective columns to cut scan time.
+	•	Use Query History/Profile to find shuffle hot spots & window heavy ops.
+	•	Consider warehouse size A/B (Small vs Medium) and pick the cheaper:
+\text{Cost} \propto (\text{rate/hour}) \times (\text{elapsed time})
+
+⸻
+
+C) Add AWS services
+	•	S3 storage (10 TB): ~$230
+	•	S3 requests: ~$12 (adjust if many small files)
+	•	NAT: $0 (if using S3 VPC endpoint; otherwise add NAT hours + $/GB)
+	•	EBS: $10–$20 (runtime‑proportional, small here)
+	•	Airflow (MWAA): ~$100
+	•	CloudWatch/logging: $5–$20 typical light usage
+	•	Glue Catalog: usually $0–$10 (light)
+
+AWS add‑on subtotal: ~$357–$392 / month (with the assumptions above)
