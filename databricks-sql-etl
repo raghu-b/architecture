@@ -1,0 +1,28 @@
+databricks-sql-etl/
+│
+├── notebooks/                  # Dev & ad-hoc SQL notebooks
+│   ├── bronze_loads/           # Raw data ingestion SQLs
+│   ├── silver_transforms/      # Cleansing, joins, standardization
+│   └── gold_models/            # Business-ready marts & reports
+│
+├── sql/                        # Pure SQL scripts (modular)
+│   ├── create_tables.sql       # DDLs
+│   ├── bronze_ingest.sql
+│   ├── silver_transform.sql
+│   └── gold_aggregates.sql
+│
+├── workflows/                  # Job definitions (JSON/YAML)
+│   ├── etl_daily.json          # Databricks workflow job config
+│   └── etl_hourly.json
+│
+├── tests/                      # Data quality / unit tests
+│   ├── dq_checks.sql           # NULL, duplicates, referential integrity
+│   └── validation_queries.sql
+│
+├── docs/                       # Documentation
+│   └── data_model.md
+│
+└── config/                     # Environment configs
+    ├── dev.yaml
+    ├── test.yaml
+    └── prod.yaml
