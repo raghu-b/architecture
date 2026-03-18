@@ -1,0 +1,55 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36" version="29.6.3">
+  <diagram name="Medallion Architecture" id="WcgdIYSkTC2DohXJmoAu">
+    <mxGraphModel dx="1234" dy="803" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="dWLJUeueCnk6Qyvyx3Tx-1" parent="1" style="text;html=1;fontSize=20;fontStyle=1;" value="Medallion Architecture&#xa;How raw data becomes analytics-ready" vertex="1">
+          <mxGeometry height="60" width="500" x="300" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="dWLJUeueCnk6Qyvyx3Tx-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;" value="Data Sources&#xa;Databases | APIs | Logs | Events" vertex="1">
+          <mxGeometry height="80" width="180" x="50" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="dWLJUeueCnk6Qyvyx3Tx-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#cd7f32;fontColor=#ffffff;" value="Bronze Layer&#xa;(Raw Ingestion)&#xa;- Raw data&#xa;- Append-only&#xa;- Schema may change&#xa;- Exact source copy" vertex="1">
+          <mxGeometry height="120" width="220" x="300" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="dWLJUeueCnk6Qyvyx3Tx-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c0c0c0;" value="Silver Layer&#xa;(Clean &amp; Refined)&#xa;- Cleaned &amp; validated&#xa;- Deduplicated&#xa;- Standardized&#xa;- Business logic applied" vertex="1">
+          <mxGeometry height="120" width="220" x="580" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="dWLJUeueCnk6Qyvyx3Tx-5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffd700;" value="Gold Layer&#xa;(Analytics Ready)&#xa;- Aggregated data&#xa;- Business metrics&#xa;- Star schema&#xa;- Optimized queries" vertex="1">
+          <mxGeometry height="120" width="220" x="860" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="dWLJUeueCnk6Qyvyx3Tx-6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;" value="BI / ML&#xa;Dashboards | Reports | ML Models" vertex="1">
+          <mxGeometry height="80" width="200" x="1150" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="dWLJUeueCnk6Qyvyx3Tx-7" edge="1" parent="1" source="dWLJUeueCnk6Qyvyx3Tx-2" target="dWLJUeueCnk6Qyvyx3Tx-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dWLJUeueCnk6Qyvyx3Tx-8" edge="1" parent="1" source="dWLJUeueCnk6Qyvyx3Tx-3" target="dWLJUeueCnk6Qyvyx3Tx-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dWLJUeueCnk6Qyvyx3Tx-9" edge="1" parent="1" source="dWLJUeueCnk6Qyvyx3Tx-4" target="dWLJUeueCnk6Qyvyx3Tx-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dWLJUeueCnk6Qyvyx3Tx-10" edge="1" parent="1" source="dWLJUeueCnk6Qyvyx3Tx-5" target="dWLJUeueCnk6Qyvyx3Tx-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dWLJUeueCnk6Qyvyx3Tx-11" parent="1" style="text;html=1;fontColor=#ff0000;" value="Do NOT transform data in Bronze" vertex="1">
+          <mxGeometry height="40" width="220" x="320" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="dWLJUeueCnk6Qyvyx3Tx-12" parent="1" style="text;html=1;" value="Data becomes trustworthy in Silver" vertex="1">
+          <mxGeometry height="40" width="240" x="600" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="dWLJUeueCnk6Qyvyx3Tx-13" parent="1" style="text;html=1;" value="Built for decision-making" vertex="1">
+          <mxGeometry height="40" width="220" x="880" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="dWLJUeueCnk6Qyvyx3Tx-14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0f0f0;" value="Who Uses What?&#xa;Bronze: Data Engineers&#xa;Silver: Analytics Engineers &amp; Data Scientists&#xa;Gold: Analysts &amp; Business Users" vertex="1">
+          <mxGeometry height="120" width="600" x="300" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="dWLJUeueCnk6Qyvyx3Tx-15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;" value="Key Takeaways&#xa;- Bronze = raw data&#xa;- Silver = cleaned data&#xa;- Gold = insights&#xa;- Layered design scales better" vertex="1">
+          <mxGeometry height="120" width="600" x="300" y="500" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
