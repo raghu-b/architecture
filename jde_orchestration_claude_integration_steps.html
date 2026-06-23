@@ -1,0 +1,488 @@
+
+<h2 class="sr-only">End-to-end steps: integrating Claude to build and call a JDE Orchestration REST API</h2>
+
+<div id="phases" style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap"></div>
+<div id="dots" style="display:flex;gap:6px;align-items:center;margin-bottom:14px"></div>
+
+<div style="border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem;background:var(--color-background-primary);min-height:460px">
+  <div id="step-label" style="font-size:11px;font-weight:500;letter-spacing:.05em;margin-bottom:6px;color:var(--color-text-tertiary)"></div>
+  <div id="step-title" style="font-size:16px;font-weight:500;margin:0 0 8px;color:var(--color-text-primary)"></div>
+  <div id="step-desc" style="font-size:13px;color:var(--color-text-secondary);margin:0 0 14px;line-height:1.65;max-width:580px"></div>
+  <pre id="step-code" style="background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:14px;font-size:12px;font-family:var(--font-mono);overflow-x:auto;margin:0;line-height:1.7;white-space:pre;color:var(--color-text-primary)"></pre>
+</div>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+  <button id="btn-prev" onclick="go(-1)">← Previous</button>
+  <span id="counter" style="font-size:12px;color:var(--color-text-secondary)"></span>
+  <button id="btn-next" onclick="go(1)">Next →</button>
+</div>
+
+<script>
+const PHASES = [
+  { label: 'Design', steps: [0,1],   color: '#7F77DD' },
+  { label: 'Build',  steps: [2,3,4], color: '#1D9E75' },
+  { label: 'Test',   steps: [5,6],   color: '#BA7517' },
+  { label: 'Agent',  steps: [7],     color: '#D85A30' },
+];
+
+const STEPS = [
+  {
+    phase: 0,
+    title: 'Ask Claude to design the Orchestration schema',
+    desc: 'Start by giving Claude your business requirement. It will identify the right JDE Business Functions (BSFNs), define the input/output contract, and generate the field mappings you need before touching Orchestrator Studio.',
+    code:
+`# Prompt Claude to design the JDE Orchestration for you
+design_prompt = """
+Design a JDE EnterpriseOne Orchestration for this requirement:
+
+BUSINESS NEED: Create an AP voucher from an external system
+INPUTS:  Supplier number (AN8), invoice amount, invoice date, company
+OUTPUTS: JDE document number, batch number
+
+Please provide:
+1. Orchestration name and version
+2. Input field names with JDE data types (STRING, INTEGER, MATH_NUMERIC, JDEDATE)
+3. The correct BSFN name (B or N prefix) and service package
+4. BSFN parameter-to-input alias mappings
+5. Output alias mappings
+6. Suggested error handling for severity E codes
+"""
+
+response = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=2048,
+    system=JDE_SYSTEM,         # your JDE knowledge context from earlier
+    messages=[{"role": "user", "content": design_prompt}]
+)
+
+# Claude returns: BSFN name, data types, full field mapping
+# → use this directly in Orchestrator Studio Step 3-4
+print(response.content[0].text)`
+  },
+  {
+    phase: 0,
+    title: 'Authenticate with the AIS server',
+    desc: 'Get an AIS session token. All subsequent REST calls to JDE — including testing your new Orchestration — require this token in the Authorization header.',
+    code:
+`import requests
+
+AIS_BASE = "https://jde.yourcompany.com/jderest/v3"
+
+def get_ais_token(username: str, password: str) -> str:
+    r = requests.post(
+        f"{AIS_BASE}/tokenrequest",
+        json={
+            "username": username,
+            "password": password,
+            "deviceName": "claude_integration",
+            "requiredCapabilities": ""
+        },
+        timeout=10
+    )
+    r.raise_for_status()
+    data = r.json()
+
+    if "userInfo" not in data:
+        raise ValueError(f"AIS auth failed: {data}")
+
+    return data["userInfo"]["token"]    # JWT — pass as Authorization header
+
+# ─── Check what Orchestrations already exist ────────────────
+def list_orchestrations(token: str) -> list:
+    r = requests.get(
+        f"{AIS_BASE}/orchestratorstudio/listorchestrations",
+        headers={"Authorization": token},
+        timeout=10
+    )
+    r.raise_for_status()
+    return r.json().get("orchestrations", [])
+
+token = get_ais_token("JDEUSER", "password")
+existing = list_orchestrations(token)
+# → check list before naming your new Orchestration`
+  },
+  {
+    phase: 1,
+    title: 'Create the Orchestration in Orchestrator Studio',
+    desc: 'Log into JDE Web Client → Orchestrator Studio tab → New Orchestration. Use the schema Claude generated in Step 1. The Orchestration becomes a REST endpoint on your AIS server the moment you publish it.',
+    code:
+`# ── Orchestrator Studio UI steps ─────────────────────────────
+#
+# 1. JDE Web Client → Orchestrator Studio → New
+#
+# 2. Set header:
+#      Name:        CreateAPVoucher
+#      Version:     1.0
+#      Description: Creates AP voucher via N0400047
+#
+# 3. Add INPUTS (use names Claude suggested):
+#      SupplierAN8    → Data type: INTEGER      Required: Y
+#      InvoiceAmount  → Data type: MATH_NUMERIC Required: Y
+#      InvoiceDate    → Data type: JDEDATE      Required: Y
+#      Company        → Data type: STRING       Max: 5
+#
+# 4. Add STEP → Type: Service Request
+#      Service Name: N0400047    (AP Voucher BSFN)
+#
+#    Map inputs to BSFN parameters:
+#      mnAddressNumber  ← SupplierAN8
+#      mnPaymentAmount  ← InvoiceAmount
+#      jdInvoiceDate    ← InvoiceDate
+#      szCompanyKey     ← Company
+#
+# 5. Add OUTPUTS (from BSFN response):
+#      mnDocumentNumber → alias: DocNumber
+#      szBatchNumber    → alias: BatchNumber
+#
+# ── Underlying JSON structure (auto-generated by Studio) ──────
+{
+  "name": "CreateAPVoucher",
+  "version": "1.0",
+  "inputs": [
+    {"name": "SupplierAN8",   "type": "INTEGER"},
+    {"name": "InvoiceAmount", "type": "MATH_NUMERIC"},
+    {"name": "InvoiceDate",   "type": "JDEDATE"},
+    {"name": "Company",       "type": "STRING"}
+  ],
+  "steps": [{
+    "name": "CallAPVoucherBSFN",
+    "type": "serviceRequest",
+    "serviceName": "N0400047",
+    "inputs": {
+      "mnAddressNumber": "{{SupplierAN8}}",
+      "mnPaymentAmount": "{{InvoiceAmount}}",
+      "jdInvoiceDate":   "{{InvoiceDate}}",
+      "szCompanyKey":    "{{Company}}"
+    },
+    "outputs": {
+      "mnDocumentNumber": "DocNumber",
+      "szBatchNumber":    "BatchNumber"
+    }
+  }]
+}`
+  },
+  {
+    phase: 1,
+    title: 'Add cross-references and error handling steps',
+    desc: 'For robust Orchestrations, add cross-reference rules to translate external values to JDE codes, and add a Rule step to catch BSFN error severity before returning to the caller.',
+    code:
+`# ── Additional steps to add in Orchestrator Studio ────────────
+
+# CROSS-REFERENCE step (before BSFN call):
+# Translate external supplier ID → JDE AN8 if systems differ
+{
+  "name": "MapSupplierCode",
+  "type": "crossReference",
+  "xRefTable": "SUPPLIER_MAP",
+  "lookupValue": "{{ExternalSupplierID}}",
+  "outputAlias": "SupplierAN8"
+}
+
+# RULE step (after BSFN call) — catch hard errors:
+{
+  "name": "CheckForErrors",
+  "type": "rule",
+  "condition": "{{BSFN_SEVERITY}} == 'E'",
+  "trueAction": "returnError",
+  "errorMessage": "AP voucher creation failed: {{BSFN_MESSAGE}}"
+}
+
+# ── In Python — inspect Orchestration definition via REST ──────
+def get_orchestration_def(token: str, name: str) -> dict:
+    """Retrieve the JSON definition of any Orchestration."""
+    r = requests.get(
+        f"{AIS_BASE}/orchestratorstudio/orchestration/{name}",
+        headers={"Authorization": token},
+        timeout=10
+    )
+    r.raise_for_status()
+    return r.json()
+
+defn = get_orchestration_def(token, "CreateAPVoucher")
+print(defn)     # feed this back to Claude for review/suggestions`
+  },
+  {
+    phase: 1,
+    title: 'Publish the Orchestration',
+    desc: 'Click Publish in Orchestrator Studio. JDE registers it on the AIS server immediately. The endpoint is now live — no server restart, no deployment pipeline.',
+    code:
+`# After publishing in Studio UI, verify via AIS REST:
+
+def verify_orchestration_live(token: str, name: str) -> bool:
+    """Confirm a published Orchestration is callable on AIS."""
+    try:
+        r = requests.get(
+            f"{AIS_BASE}/orchestratorstudio/orchestration/{name}",
+            headers={"Authorization": token},
+            timeout=10
+        )
+        return r.status_code == 200
+    except Exception:
+        return False
+
+is_live = verify_orchestration_live(token, "CreateAPVoucher")
+print("Live:", is_live)   # → True
+
+# ── Published endpoint is now available at: ───────────────────
+#
+#   POST https://jde.yourcompany.com/jderest/v3/orchestrator/CreateAPVoucher
+#   Authorization: {token}
+#   Content-Type: application/json
+#
+#   Body: { "inputs": { "SupplierAN8": 4500, ... } }
+#
+# No custom routing, no gateway config — AIS handles it natively.
+# The Orchestration name IS the URL path segment.`
+  },
+  {
+    phase: 2,
+    title: 'Test the new REST endpoint',
+    desc: 'Call your new Orchestration through the standard AIS REST interface. Build a reusable wrapper that handles auth, error severity filtering, and JDE\'s nested response structure.',
+    code:
+`def call_orchestration(token: str, name: str, inputs: dict) -> dict:
+    """Generic caller for any JDE Orchestration."""
+    r = requests.post(
+        f"{AIS_BASE}/orchestrator/{name}",
+        headers={
+            "Authorization": token,
+            "Content-Type": "application/json"
+        },
+        json={"inputs": inputs},
+        timeout=30
+    )
+    r.raise_for_status()
+    data = r.json()
+
+    # Filter JDE hard errors (severity prefix E = abort)
+    hard_errors = [
+        e for e in data.get("errors", [])
+        if str(e.get("CAUSE", "")).startswith("E")
+    ]
+    if hard_errors:
+        raise ValueError(f"JDE: {hard_errors[0]['CAUSE']}")
+
+    return data.get("output", data)
+
+# ── Test your new CreateAPVoucher endpoint ────────────────────
+result = call_orchestration(token, "CreateAPVoucher", {
+    "SupplierAN8":   4500,
+    "InvoiceAmount": 1200.00,
+    "InvoiceDate":   "2026-06-18",
+    "Company":       "00001"
+})
+
+print(result)
+# → {"DocNumber": 112345, "BatchNumber": "GT001243"}
+
+# Warnings (non-fatal) are in data["warnings"] — log but continue`
+  },
+  {
+    phase: 2,
+    title: 'Have Claude validate and improve the Orchestration',
+    desc: 'Feed the actual response back to Claude. It will verify the output structure, flag missing error handling, and suggest improvements to the field mappings or BSFN choice.',
+    code:
+`import json
+
+# Get the Orchestration definition + a sample response
+orch_def  = get_orchestration_def(token, "CreateAPVoucher")
+test_resp = call_orchestration(token, "CreateAPVoucher", {
+    "SupplierAN8": 4500, "InvoiceAmount": 1200.00,
+    "InvoiceDate": "2026-06-18", "Company": "00001"
+})
+
+review = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=1024,
+    system=JDE_SYSTEM,
+    messages=[{
+        "role": "user",
+        "content": f"""Review this JDE Orchestration and its test output.
+Identify any issues with field mappings, error handling gaps,
+or improvements for production use.
+
+ORCHESTRATION DEFINITION:
+{json.dumps(orch_def, indent=2)}
+
+TEST RESPONSE:
+{json.dumps(test_resp, indent=2)}"""
+    }]
+)
+
+print(review.content[0].text)
+# Claude will flag: missing warning handling, suggest adding
+# cross-reference for date format, recommend audit logging, etc.`
+  },
+  {
+    phase: 3,
+    title: 'Register the Orchestration as a Claude tool',
+    desc: 'Define your new AIS endpoint as a Claude function tool. The JSON schema you define here is exactly what Claude uses to decide when and how to call it.',
+    code:
+`tools = [
+    {
+        "name": "create_ap_voucher",
+        "description": (
+            "Creates an AP voucher in JDE via the AIS Orchestration. "
+            "Use when the user asks to create, post, or enter an invoice "
+            "for a supplier in accounts payable."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "supplier_an8": {
+                    "type": "integer",
+                    "description": "Supplier Address Book Number in JDE"
+                },
+                "invoice_amount": {
+                    "type": "number",
+                    "description": "Gross invoice amount (positive)"
+                },
+                "invoice_date": {
+                    "type": "string",
+                    "description": "Invoice date in YYYY-MM-DD format"
+                },
+                "company": {
+                    "type": "string",
+                    "description": "JDE company code, e.g. 00001"
+                }
+            },
+            "required": [
+                "supplier_an8", "invoice_amount",
+                "invoice_date", "company"
+            ]
+        }
+    }
+]
+
+# Add more tools for other Orchestrations:
+#   get_ap_aging, approve_payment_batch, query_po_status...`
+  },
+  {
+    phase: 3,
+    title: 'Build the full Claude ↔ JDE agent loop',
+    desc: 'The complete integration: Claude receives natural language, decides which Orchestration to call, you execute it via AIS, and Claude interprets the JDE response for the user.',
+    code:
+`def jde_agent(user_request: str, token: str) -> str:
+    """Full agent loop: natural language in → JDE action out."""
+    messages = [{"role": "user", "content": user_request}]
+
+    while True:
+        response = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=2048,
+            system=JDE_SYSTEM,
+            tools=tools,
+            messages=messages
+        )
+
+        # Claude finished answering — return to user
+        if response.stop_reason == "end_turn":
+            return next(b.text for b in response.content
+                        if hasattr(b, "text"))
+
+        # Claude wants to call a JDE Orchestration
+        if response.stop_reason == "tool_use":
+            messages.append({
+                "role": "assistant",
+                "content": response.content
+            })
+
+            tool_results = []
+            for block in response.content:
+                if block.type != "tool_use":
+                    continue
+
+                # Route tool name → Orchestration name + param mapping
+                if block.name == "create_ap_voucher":
+                    inp = block.input
+                    jde_inputs = {
+                        "SupplierAN8":   inp["supplier_an8"],
+                        "InvoiceAmount": inp["invoice_amount"],
+                        "InvoiceDate":   inp["invoice_date"],
+                        "Company":       inp["company"]
+                    }
+                    result = call_orchestration(
+                        token, "CreateAPVoucher", jde_inputs
+                    )
+
+                tool_results.append({
+                    "type":        "tool_result",
+                    "tool_use_id": block.id,
+                    "content":     str(result)
+                })
+
+            messages.append({"role": "user", "content": tool_results})
+
+# ── Usage ────────────────────────────────────────────────────
+answer = jde_agent(
+    "Post an AP invoice for supplier 4500 — $1,200, dated today, company 00001",
+    token
+)
+print(answer)
+# → "AP voucher created successfully. Document number: 112345,
+#    batch GT001243. The invoice is now pending approval in JDE."`
+  }
+];
+
+let cur = 0;
+
+function phaseOf(i) {
+  return PHASES.findIndex(p => p.steps.includes(i));
+}
+
+function render() {
+  const s = STEPS[cur];
+  const ph = phaseOf(cur);
+  const phase = PHASES[ph];
+
+  document.getElementById('step-label').textContent = `Step ${cur+1} of ${STEPS.length}  ·  ${phase.label}`;
+  document.getElementById('step-title').textContent = s.title;
+  document.getElementById('step-desc').textContent = s.desc;
+  document.getElementById('step-code').textContent = s.code;
+  document.getElementById('counter').textContent = `${cur+1} / ${STEPS.length}`;
+  document.getElementById('btn-prev').disabled = cur === 0;
+  document.getElementById('btn-next').textContent =
+    cur === STEPS.length - 1 ? 'Full example ↗' : 'Next →';
+
+  // Phase pills
+  const phDiv = document.getElementById('phases');
+  phDiv.innerHTML = '';
+  PHASES.forEach((p, i) => {
+    const pill = document.createElement('span');
+    const active = i === ph;
+    pill.textContent = p.label;
+    pill.style.cssText = `font-size:11px;font-weight:500;padding:2px 10px;border-radius:12px;cursor:pointer;transition:all .15s;` +
+      (active
+        ? `background:${p.color}22;color:${p.color};border:0.5px solid ${p.color}`
+        : `color:var(--color-text-tertiary);border:0.5px solid transparent`);
+    pill.onclick = () => { cur = p.steps[0]; render(); };
+    phDiv.appendChild(pill);
+  });
+
+  // Step dots
+  const dotDiv = document.getElementById('dots');
+  dotDiv.innerHTML = '';
+  STEPS.forEach((_, i) => {
+    const d = document.createElement('div');
+    const iph = phaseOf(i);
+    d.style.cssText = `width:8px;height:8px;border-radius:50%;flex-shrink:0;cursor:pointer;transition:background .15s;background:` +
+      (i === cur
+        ? PHASES[iph].color
+        : (iph === ph ? `${PHASES[iph].color}55` : 'var(--color-border-secondary)'));
+    d.onclick = () => { cur = i; render(); };
+    dotDiv.appendChild(d);
+  });
+
+  const lbl = document.createElement('span');
+  lbl.textContent = s.title;
+  lbl.style.cssText = 'font-size:12px;color:var(--color-text-secondary);margin-left:8px';
+  dotDiv.appendChild(lbl);
+}
+
+function go(dir) {
+  const next = cur + dir;
+  if (next >= 0 && next < STEPS.length) { cur = next; render(); }
+  else if (dir > 0) sendPrompt('Show me a complete production-ready JDE Claude agent — with AP voucher, AP aging query, and PO status tools, all connected to JDE AIS via Orchestrations.');
+}
+
+render();
+</script>
