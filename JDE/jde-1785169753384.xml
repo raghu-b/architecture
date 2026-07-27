@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CrossReference name="SensorToEq">
+    <description>Maps external SensorID to JDE Equipment Number.</description>
+    <objectType>XREF</objectType>
+    <crossReferenceObject>IoT_Equip_Map</crossReferenceObject>
+    <inputs>
+        <input name="SensorID" />
+    </inputs>
+    <outputs>
+        <output name="EquipmentNumber" />
+    </outputs>
+</CrossReference>

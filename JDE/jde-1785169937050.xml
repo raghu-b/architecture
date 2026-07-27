@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ServiceRequest name="GetCustomerName">
+    <description>Fetches Alpha Name from F0101 based on Address Number.</description>
+    <objectType>SREQ</objectType>
+    <type>DataRequest</type>
+    <targetName>V0101E</targetName> <!-- JDE Business View or Table -->
+    <targetType>view</targetType>
+    <findOnEntry>true</findOnEntry>
+    <!-- The column we want to return from the database -->
+    <returnControlIDs>ALPH</returnControlIDs>
+    <inputs>
+        <input name="AddressNumber" />
+    </inputs>
+    <dataItems>
+        <!-- The WHERE clause: AN8 (Address Number) = Input Variable -->
+        <dataItem>
+            <dictItem>AN8</dictItem>
+            <operator>=</operator>
+            <value>${AddressNumber}</value>
+        </dataItem>
+    </dataItems>
+</ServiceRequest>

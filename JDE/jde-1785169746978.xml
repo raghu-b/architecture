@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Orchestration name="ProcessSensorData">
+    <description>Master orchestration combining all elements.</description>
+    <objectType>ORCH</objectType>
+    
+    <!-- 1. Define Master Inputs -->
+    <inputs>
+        <input name="SensorID" type="String" />
+        <input name="Temperature" type="Numeric" />
+    </inputs>
+
+    <!-- 2. Define the Sequence of Steps -->
+    <steps>
+        <!-- Step A: White List Check -->
+        <step name="AuthCheck" type="WhiteList">
+            <name>SensorCheck</name>
+            <mappings>
+                <map from="SensorID" to="SensorID" />
+            </mappings>
+        </step>
+
+        <!-- Step B: Cross Reference Mapping -->
+        <step name="MapEquipment" type="CrossReference">
+            <name>SensorToEq</name>
+            <mappings>
+                <map from="SensorID" to="SensorID" />
+            </mappings>
+        </step>
+
+        <!-- Step C: Rule Evaluation -->
+        <step name="CheckThreshold" type="Rule">
+            <name>HighTempAlert</name>
+            <mappings>
+                <map from="Temperature" to="Temperature" />
+            </mappings>
+            
+            <!-- Step D: Conditional Service Request -->
+            <true>
+                <step name="LogHighTemp" type="ServiceRequest">
+                    <name>AddMeterReading</name>
+                    <mappings>
+                        <map from="MapEquipment.EquipmentNumber" to="EquipmentNumber" />
+                        <map from="Temperature" to="Temperature" />
+                    </mappings>
+                </step>
+            </true>
+            <false>
+                <!-- If the rule is false, the orchestration simply ends without action -->
+            </false>
+        </step>
+    </steps>
+</Orchestration>

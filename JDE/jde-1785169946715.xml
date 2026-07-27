@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ServiceRequest name="RunInvoiceReport">
+    <description>Submits the Invoice Print UBE for a specific order.</description>
+    <objectType>SREQ</objectType>
+    <type>Report</type>
+    <reportName>R42565</reportName>
+    <reportVersion>ZJDE0001</reportVersion>
+    <!-- 'false' means the Orchestration will pause until the UBE finishes running -->
+    <fireAndForget>false</fireAndForget> 
+    <inputs>
+        <input name="OrderNumber" />
+        <input name="OrderType" />
+    </inputs>
+    <dataSelection>
+        <!-- Overrides the UBE Data Selection: DOCO = OrderNumber AND DCTO = OrderType -->
+        <criteria dictItem="DOCO" operator="=" value="${OrderNumber}" />
+        <criteria dictItem="DCTO" operator="=" value="${OrderType}" AND="true" />
+    </dataSelection>
+</ServiceRequest>

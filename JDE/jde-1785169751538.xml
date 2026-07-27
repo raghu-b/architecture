@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Rule name="HighTempAlert">
+    <description>Checks if temperature reading exceeds threshold.</description>
+    <objectType>RULE</objectType>
+    <condition>
+        <statement>
+            <operand1>Temperature</operand1>
+            <operator>&gt;</operator>
+            <operand2>100</operand2>
+        </statement>
+    </condition>
+</Rule>

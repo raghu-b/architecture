@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ServiceRequest name="CallWeatherAPI">
+    <description>Calls an external REST API to get weather data.</description>
+    <objectType>SREQ</objectType>
+    <type>Connector</type>
+    <connectionName>WeatherService_REST</connectionName> <!-- Defined in JDE Connections -->
+    <httpMethod>GET</httpMethod>
+    <path>/v1/current.json</path>
+    <inputs>
+        <input name="City" />
+    </inputs>
+    <parameters>
+        <!-- Appends ?q={City} to the URL -->
+        <parameter name="q" value="${City}" />
+    </parameters>
+    <outputs>
+        <!-- Uses JSONPath to extract the temperature from the third-party JSON response -->
+        <output name="CurrentTemp" path="$.current.temp_f" />
+    </outputs>
+</ServiceRequest>

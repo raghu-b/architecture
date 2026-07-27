@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ServiceRequest name="SendErrorEmail">
+    <description>Sends an email notification when temperature exceeds threshold.</description>
+    <objectType>SREQ</objectType>
+    <type>Message</type>
+    <messageType>Email</messageType>
+    <to>admin@example.com</to> <!-- Can also be a variable like ${AdminEmail} -->
+    <subject>Alert: High Temperature Detected on ${EquipmentNumber}</subject>
+    <body>
+        <![CDATA[
+            Equipment Number: ${EquipmentNumber}
+            Reported Temperature: ${Temperature}
+            
+            Please inspect the equipment immediately.
+        ]]>
+    </body>
+    <inputs>
+        <input name="EquipmentNumber" />
+        <input name="Temperature" />
+    </inputs>
+</ServiceRequest>

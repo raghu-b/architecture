@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ServiceRequest name="AddMeterReading">
+    <description>Enters a meter reading into JDE.</description>
+    <objectType>SREQ</objectType>
+    <application>P12120</application>
+    <form>W12120A</form>
+    <version>ZJDE0001</version>
+    <inputs>
+        <input name="EquipmentNumber" mappedTo="1[22]" /> <!-- Form Control ID -->
+        <input name="Temperature" mappedTo="1[35]" />
+    </inputs>
+    <actions>
+        <action type="SetControlValue" control="1[22]" value="${EquipmentNumber}" />
+        <action type="SetControlValue" control="1[35]" value="${Temperature}" />
+        <action type="PressButton" control="1[4]" /> <!-- Save Button -->
+    </actions>
+</ServiceRequest>

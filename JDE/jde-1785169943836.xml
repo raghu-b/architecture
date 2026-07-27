@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ServiceRequest name="CalculateCelsius">
+    <description>Converts Fahrenheit to Celsius using a Groovy Script.</description>
+    <objectType>SREQ</objectType>
+    <type>Custom</type>
+    <language>Groovy</language>
+    <inputs>
+        <input name="TempFahrenheit" type="Numeric" />
+    </inputs>
+    <outputs>
+        <output name="TempCelsius" type="Numeric" />
+    </outputs>
+    <script>
+        <![CDATA[
+        import com.oracle.e1.common.OrchestrationAttributes;
+        HashMap<String, Object> main(OrchestrationAttributes orchAttr, HashMap inputMap) {
+            HashMap<String, Object> returnMap = new HashMap<String, Object>();
+            
+            // 1. Fetch input variable
+            def tempF = new BigDecimal(inputMap.get("TempFahrenheit"));
+            
+            // 2. Perform math: (F - 32) * 5/9
+            def tempC = (tempF - 32) * (5.0 / 9.0);
+            
+            // 3. Set output variable and round to 2 decimal places
+            returnMap.put("TempCelsius", tempC.setScale(2, BigDecimal.ROUND_HALF_UP));
+            
+            return returnMap;
+        }
+        ]]>
+    </script>
+</ServiceRequest>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WhiteList name="SensorCheck">
+    <description>Validates if the incoming SensorID is authorized.</description>
+    <objectType>WHTL</objectType>
+    <crossReferenceObject>IoT_Authorized_Sensors</crossReferenceObject>
+    <inputs>
+        <input name="SensorID" />
+    </inputs>
+</WhiteList>
