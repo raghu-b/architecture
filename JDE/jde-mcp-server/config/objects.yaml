@@ -1,0 +1,149 @@
+# ---------------------------------------------------------------------------
+# Semantic model: JDE tables -> business objects
+#
+# This file is the difference between a working integration and one that
+# produces confident nonsense. A model pointed at raw JDE columns has no way to
+# know that F0411.RPAG is a voucher gross amount stored with implied decimals,
+# or that RPDDJ is a Julian date. Everything it needs to reason correctly is
+# declared here, once.
+#
+# Field types drive automatic conversion in convert.py:
+#   string        strip fixed-width padding
+#   numeric       plain number
+#   currency      apply implied decimals (see `decimals`, default 2)
+#   julian_date   CYYDDD -> ISO date string
+#
+# VERIFY THE COLUMN NAMES against your own environment before trusting output.
+# Column aliases are standard for a vanilla install, but custom fields and
+# localisations vary. Anything you are unsure of, check in Data Dictionary
+# (P92001) or Table Design Aid first.
+# ---------------------------------------------------------------------------
+
+objects:
+
+  ap_voucher:
+    table: F0411
+    description: >
+      Accounts Payable ledger. One row per voucher pay item, not per voucher —
+      a voucher with three pay items produces three rows sharing a document
+      number. Sum by document_number when you need voucher-level totals.
+    default_order_by: due_date
+    fields:
+      supplier_number:   { column: RPAN8, type: numeric,     label: Supplier address book number }
+      document_number:   { column: RPDOC, type: numeric,     label: Voucher document number }
+      document_type:     { column: RPDCT, type: string,      label: Document type (PV, PD, ...) }
+      pay_item:          { column: RPSFX, type: string,      label: Pay item suffix }
+      company:           { column: RPKCO, type: string,      label: Document company }
+      business_unit:     { column: RPMCU, type: string,      label: Business unit / cost centre }
+      gross_amount:      { column: RPAG,  type: currency,    label: Gross amount }
+      open_amount:       { column: RPAAP, type: currency,    label: Open (unpaid) amount }
+      currency_code:     { column: RPCRCD, type: string,     label: Currency code }
+      invoice_date:      { column: RPDIVJ, type: julian_date, label: Supplier invoice date }
+      due_date:          { column: RPDDJ, type: julian_date, label: Net due date }
+      gl_date:           { column: RPDGJ, type: julian_date, label: G/L date }
+      pay_status:        { column: RPPST, type: string,      label: "Pay status (A=approved, H=held, P=paid)" }
+      remark:            { column: RPRMK, type: string,      label: Voucher remark }
+
+  ar_invoice:
+    table: F03B11
+    description: >
+      Accounts Receivable ledger. One row per invoice pay item. open_amount > 0
+      means still outstanding; use due_date for aging buckets.
+    default_order_by: due_date
+    fields:
+      customer_number:   { column: RPAN8, type: numeric,     label: Customer address book number }
+      document_number:   { column: RPDOC, type: numeric,     label: Invoice document number }
+      document_type:     { column: RPDCT, type: string,      label: Document type (RI, RM, ...) }
+      pay_item:          { column: RPSFX, type: string,      label: Pay item suffix }
+      company:           { column: RPKCO, type: string,      label: Document company }
+      business_unit:     { column: RPMCU, type: string,      label: Business unit }
+      gross_amount:      { column: RPAG,  type: currency,    label: Invoice gross amount }
+      open_amount:       { column: RPAAP, type: currency,    label: Open (uncollected) amount }
+      currency_code:     { column: RPCRCD, type: string,     label: Currency code }
+      invoice_date:      { column: RPDIVJ, type: julian_date, label: Invoice date }
+      due_date:          { column: RPDDJ, type: julian_date, label: Due date }
+      gl_date:           { column: RPDGJ, type: julian_date, label: G/L date }
+      pay_status:        { column: RPPST, type: string,      label: Pay status }
+
+  gl_transaction:
+    table: F0911
+    description: >
+      Account Ledger — the general ledger detail table. Every posted journal
+      line lives here. posted_code 'P' means posted; blank means unposted and
+      should usually be excluded from balance reporting.
+    default_order_by: gl_date
+    fields:
+      account_id:        { column: GLAID, type: string,      label: Account ID (short) }
+      business_unit:     { column: GLMCU, type: string,      label: Business unit }
+      object_account:    { column: GLOBJ, type: string,      label: Object account }
+      subsidiary:        { column: GLSUB, type: string,      label: Subsidiary }
+      company:           { column: GLKCO, type: string,      label: Document company }
+      document_number:   { column: GLDOC, type: numeric,     label: Document number }
+      document_type:     { column: GLDCT, type: string,      label: Document type }
+      batch_number:      { column: GLICU, type: numeric,     label: Batch number }
+      batch_type:        { column: GLICUT, type: string,     label: Batch type }
+      amount:            { column: GLAA,  type: currency,    label: Amount (debit positive, credit negative) }
+      units:             { column: GLU,   type: numeric,     label: Units }
+      gl_date:           { column: GLDGJ, type: julian_date, label: G/L date }
+      fiscal_year:       { column: GLFY,  type: numeric,     label: Fiscal year }
+      period:            { column: GLPN,  type: numeric,     label: Period number }
+      ledger_type:       { column: GLLT,  type: string,      label: "Ledger type (AA=actual, BA=budget)" }
+      posted_code:       { column: GLPOST, type: string,     label: "Posted code (P=posted, blank=unposted)" }
+      explanation:       { column: GLEXA, type: string,      label: Explanation }
+
+  purchase_order:
+    table: F4311
+    description: >
+      Purchase Order Detail. One row per PO line. Used for three-way matching
+      against AP vouchers and receipts.
+    default_order_by: order_number
+    fields:
+      order_number:      { column: PDDOCO, type: numeric,    label: PO number }
+      order_type:        { column: PDDCTO, type: string,     label: Order type }
+      line_number:       { column: PDLNID, type: numeric,    label: Line number }
+      supplier_number:   { column: PDAN8,  type: numeric,    label: Supplier address book number }
+      business_unit:     { column: PDMCU,  type: string,     label: Business unit }
+      item_number:       { column: PDITM,  type: numeric,    label: Short item number }
+      description:       { column: PDDSC1, type: string,     label: Line description }
+      quantity_ordered:  { column: PDUORG, type: numeric,    label: Quantity ordered }
+      quantity_received: { column: PDUREC, type: numeric,    label: Quantity received }
+      unit_cost:         { column: PDPRRC, type: currency,   label: Unit cost, decimals: 4 }
+      extended_cost:     { column: PDAEXP, type: currency,   label: Extended cost }
+      order_date:        { column: PDTRDJ, type: julian_date, label: Order date }
+      status_code:       { column: PDNXTR, type: string,     label: Next status code }
+
+  address_book:
+    table: F0101
+    description: >
+      Address Book master. Resolve supplier and customer numbers to names here
+      rather than guessing from a document remark.
+    default_order_by: address_number
+    fields:
+      address_number:    { column: ABAN8, type: numeric,     label: Address book number }
+      name:              { column: ABALPH, type: string,     label: Alpha name }
+      search_type:       { column: ABAT1, type: string,      label: "Search type (V=supplier, C=customer)" }
+      business_unit:     { column: ABMCU, type: string,      label: Business unit }
+      tax_id:            { column: ABTAX, type: string,      label: Tax ID }
+
+# ---------------------------------------------------------------------------
+# Write-back routing.
+#
+# Every write goes through a published orchestration, which in turn calls a JDE
+# business function. Direct table writes are never performed: they bypass
+# posting rules, validations and audit triggers, and produce data that looks
+# fine until close.
+#
+# Replace these names with the orchestrations actually published in your
+# environment. If an entry is missing, the corresponding draft tool refuses to
+# stage anything rather than guessing.
+# ---------------------------------------------------------------------------
+
+writeback:
+  journal_entry:
+    orchestration: JDE_CreateJournalEntry
+    description: Creates an unposted JE batch via the F0911 business function.
+    required_fields: [company, gl_date, lines]
+  ap_voucher:
+    orchestration: JDE_CreateAPVoucher
+    description: Creates an AP voucher via the standard voucher entry BSFN.
+    required_fields: [supplier_number, company, gl_date, gross_amount]

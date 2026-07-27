@@ -1,0 +1,2 @@
+[console_scripts]
+jde-mcp = jde_mcp.server:main

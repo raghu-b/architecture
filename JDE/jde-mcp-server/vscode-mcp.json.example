@@ -1,0 +1,39 @@
+{
+  "servers": {
+    "jde-finance": {
+      "type": "stdio",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": ["-m", "jde_mcp.server"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src",
+        "JDE_OBJECTS_FILE": "${workspaceFolder}/config/objects.yaml",
+        "JDE_AIS_URL": "${input:jde_ais_url}",
+        "JDE_USERNAME": "${input:jde_username}",
+        "JDE_PASSWORD": "${input:jde_password}",
+        "JDE_DEVICE_NAME": "vscode-mcp",
+        "JDE_READ_ONLY": "true",
+        "JDE_MAX_ROWS": "500",
+        "JDE_STATE_DB": "${workspaceFolder}/jde_mcp_state.db"
+      }
+    }
+  },
+  "inputs": [
+    {
+      "id": "jde_ais_url",
+      "type": "promptString",
+      "description": "JDE AIS server base URL (e.g. https://ais.example.com:9302)"
+    },
+    {
+      "id": "jde_username",
+      "type": "promptString",
+      "description": "JDE service account username"
+    },
+    {
+      "id": "jde_password",
+      "type": "promptString",
+      "description": "JDE service account password",
+      "password": true
+    }
+  ]
+}
